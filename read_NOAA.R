@@ -12,7 +12,7 @@ read_NOAA <- function(station, path, start = 1950, end = 2021, verbose = FALSE){
     ## path <- "C:/Users/Siegfred Codia/Documents/Acads/MS Stat/Thesis/Data/NOAA/daily extracted"
     
     
-    # Initialize and dataframe
+    # Initialize  dataframe
     require(tidyverse)
     
     data0 <- dplyr::tibble(
