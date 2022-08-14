@@ -36,7 +36,11 @@ download_NOAA <- function(station, dest.path, start = 1973, end = 2021){
         # creating destination
         dest <- file.path(dest.path,year,filename)
         
-        # downloading
-        download.file(loc,dest)
+        if (url.exists(loc)){
+            # downloading
+            download.file(loc,dest)
+        }else{
+            message("Data for year ",year," does not exist.")
+        }
     } 
 }
