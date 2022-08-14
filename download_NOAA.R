@@ -11,6 +11,19 @@ download_NOAA <- function(station, dest.path, start = 1973, end = 2021){
     # for example: 
     ## dest.path <- "C:/Users/Siegfred Codia/Documents/Acads/MS Stat/Thesis/Data/NOAA/daily extracted"
     
+    if (is.null(dest.path)){
+        q <- menu(c(paste("Yes. Download data to",getwd()),
+                          "No. I will provide another destination path."),
+                    title = paste("dest.path is not specified. Extract to current directory?"))
+        if(q==1){
+            # download to current working directory
+            dest.path <- getwd()
+        }else{
+            # end function.
+            stop("Specify your destination path before proceeding.")
+        }
+    }
+    
     require(RCurl) # for locating a url path
     url <- "ftp://ftp.ncdc.noaa.gov/pub/data/gsod/"
 
