@@ -11,6 +11,6 @@ For example, Legazpi weather station's USAF ID is 984440
 
 Custom functions:
 1. `download_NOAA.R` : used to download files to a local folder. Only to be run once
-2. `read_NOAA.R`: used to read and store data to R. Will create a data frame with complete dates, even those that are not in the dataset, as long as within the range of the pre-determined start and end years.
+2. `read_NOAA.R`: used to read and store data to R. This will create a data frame with complete dates, even those that are not in the dataset, as long as within the range of the pre-determined start and end years.
 
 Sample data cleaning and analyses will also be featured here.
