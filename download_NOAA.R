@@ -1,5 +1,5 @@
 
-download_NOAA <- function(station, dest.path =NULL, years, 
+download_NOAA <- function(stations, dest.path =NULL, years, 
                           timeout = 60, overwrite = F,verbose = FALSE){
     
     #' @description 
@@ -13,9 +13,10 @@ download_NOAA <- function(station, dest.path =NULL, years,
     #' So far, this function only extracts ONE STATION at a time
     #' 
     #' @author Siegfred Roi L. Codia, \email{slcodia@@up.edu.ph}
+    #' version 3: with multiple download options
         
 
-    #' @param station is USAF ID
+    #' @param stations is USAF ID of the weather stations
     #' station numbers can be found here: ftp://ftp.ncdc.noaa.gov/pub/data/noaa/isd-history.csv
     #' for example, Legazpi weather station's USAF ID is 984440
     
@@ -72,51 +73,39 @@ download_NOAA <- function(station, dest.path =NULL, years,
     # creating a safe function for curl_fetch_memory
     s_curl_fetch_memory <- safely(curl_fetch_memory)
     
+    # setting timeout for function download.file
+    options(timeout = timeout)
+    
     # iterating through the years
     for (year in years){
+        # fetch the year url
+        year_url <- sprintf(ftp_base, year)
         
-        # file name to extract
-        filename <- paste0(station,"-99999-",year,".op.gz")
+        # location of destination
+        year_loc <- file.path(dest.path0,year)
         
-        # Server files
-            # fetch the year url
-            year_url <- sprintf(ftp_base, year)
-            # file to download
-            file_url <- file.path(year_url,filename)
-        
-        # Local files
-            # location of destination
-            year_loc <- file.path(dest.path0,year)
-            # put file on cache
-            cache_loc <- file.path(year_loc,filename)
+        # list of file names
+        files <- paste0(stations,"-99999-",year,".op.gz")
         
         
         #checking existence of local files helps us conserve bandwidth, instead of checking server then download...
-        
-        if(file.exists(cache_loc)&(overwrite==F)){
-        # skip download if cache_file already exists (depending on the value of `overwrite`)
+        files_exist <- file.exists(file.path(year_loc,files))
+        if(all(files_exist)&(overwrite==F)){
+            # skip download if cache_file already exists (depending on the value of `overwrite`)
+            
             if(verbose){
-                message(paste(filename,"already exists in local folder. Skipping download..."))
+                if (length(stations)==1){
+                    message("All files are already existing in local folder. Skipping download...")
+                }else{
+                    message(paste(filename,"already exists in local folder. Skipping download..."))
+                }
+                
             }
             next
             
-            
-        }else if(file.exists(cache_loc)&(overwrite==T)){
-        # if it exists in local folder, it is assumed that it also exists in the server.
-            message(paste(filename,"already exists in local folder. Overwriting..."))
-            
-            d <- tryCatch(download.file(file_url,cache_loc), 
-                          error = function(e) print(paste("Download failed for year",year)))
-            if(d == 0){
-                if(verbose){
-                    print(paste(year, "successfuly overwritten!"),quote = F)
-                    count = count+1
-                }
-            }
-        
-             
-        }else if(!file.exists(cache_loc)){
-        # if file DOES NOT exist in our local folder YET, we need to then confirm if it exists in the server  
+        }else{
+            # if a at least one file  DOES NOT exist in our local folder YET, 
+            # we need to then confirm if they exist in the server  
             
             # creating a safe curl fetch memory function
             s_curl_fetch_memory <- safely(curl_fetch_memory)
@@ -133,7 +122,7 @@ download_NOAA <- function(station, dest.path =NULL, years,
                 if (!is.null(res$result)){
                     tmp <- res$result
                     con <- rawConnection(tmp$content) # create connection
-                    files <- readLines(con) # list of the files in the folder
+                    files_con <- readLines(con) # list of the files in the folder
                     if (verbose){message(paste0("Successfuly connected to year folder ",year))}
                     close(con) # close connection to reduce memory
                     break # break repeat if connection has been found
@@ -153,31 +142,58 @@ download_NOAA <- function(station, dest.path =NULL, years,
                     stop(paste("Fetching memory failed at year ", year," due to timeout."), call. = F)
                     
                 }
-            }# end repeat
+            }# end repeat loop
             
-            if (filename %in% files){
-                if(verbose){
-                    message(paste("File",filename,"found. Proceeding to download..."))
+            # for counting number of file downloaded for this year
+            if (verbose){count.year <- 0}
+            
+            # download each file
+            for (file in files){
+                
+                
+                # Server file to download
+                file_url <- file.path(year_url,file)
+                
+                # Local file as cache
+                cache_loc <- file.path(year_loc,file)
+            
+                if(file.exists(cache_loc)&(overwrite == F)){
+                    message(paste(file,"already exists. Skipping download..."))
+                    next
                 }
                 
-                d <- tryCatch(download.file(file_url,cache_loc), 
-                              error = function(e) print(paste("Download failed for year",year)))
-                
-                if(d == 0){
+                if (file %in% files_con){
                     if(verbose){
-                        print(paste(year, "successfuly downloaded!"), quote = F)
-                        count = count+1
+                        message(paste("File",file,"found. Proceeding to download..."))
                     }
-                }else{next}# proceed to next year if download fails.
-                
-            }else{
-                print(paste("Data for year", year,"does not exist."), quote = F)
-                
-            } 
+                    
+                    d <- tryCatch(download.file(file_url,cache_loc), 
+                                  error = function(e) print(paste("Download failed:", file), quote = F))
+                    
+                    if(d == 0){
+                        if(verbose){
+                            
+                            print(paste("Successfully downloaded:", file), quote = F)
+                            count <- count + 1
+                            count.year <- count.year + 1
+                        }
+                    }# proceed to next year if download fails.
+                    
+                }else{
+                    print(paste(file,"does not exist."), quote = F)
+                    
+                } 
+            
+            }
             
         }
         
-            
+        # start of download for multiple files
+        
+        
+        if (verbose){
+            print(paste(year, "done! Downloaded", count.year, "station data."))
+        }    
         
         
     }
