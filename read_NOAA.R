@@ -1,4 +1,4 @@
-read_NOAA <- function(station, path, start = 1950, end = 2021, verbose = FALSE){
+read_NOAA <- function(station, WBAN = 99999,path, start = 1950, end = 2021, verbose = FALSE){
     
     if (verbose){begin.tiid <- Sys.time()}
     
@@ -12,7 +12,7 @@ read_NOAA <- function(station, path, start = 1950, end = 2021, verbose = FALSE){
     ## path <- "C:/Users/Siegfred Codia/Documents/Acads/MS Stat/Thesis/Data/NOAA/daily extracted"
     
     
-    # Initialize  dataframe
+    # Initialize and dataframe
     require(tidyverse)
     
     data0 <- dplyr::tibble(
@@ -29,12 +29,43 @@ read_NOAA <- function(station, path, start = 1950, end = 2021, verbose = FALSE){
         `SLP`       = numeric(), 
         `VISIB`     = numeric(), 
         `WDSP`      = numeric(),
+        `FRSHTT`    = character(),
         `DATE`      = date() 
+    )
+    
+    # initialize data types
+    data.types <- c("character", #STN
+                   "character", #WBAN
+                   "numeric", #YEAR
+                   "numeric", #MONTH
+                   "numeric", #DAY
+                   "numeric", #TEMP
+                   "numeric", #Count of observations used in temperature
+                   "numeric", #DEWP
+                   "numeric", #Count of observations used in dew point
+                   "numeric", #SLP sea level pressure
+                   "numeric", #Count
+                   "numeric", #STP mean station pressure for the day
+                   "numeric", #Count
+                   "numeric", #VISIB
+                   "numeric", #Count
+                   "numeric", #WDSP
+                   "numeric", #Count
+                   "numeric", #MXSPD
+                   "numeric", #GUST
+                   "numeric", #MAX
+                   "character", #Flag
+                   "numeric", #MIN,
+                   "character", #Flag
+                   "numeric", #PRCP
+                   "character", #Flag
+                   "numeric", #SNDP
+                   "character"  #FRSHTT
     )
     
     for (year in start:end){
         
-        file <- paste0(station,"-99999-",year,".op.gz") # file name
+        file <- paste0(station,"-",WBAN,"-",year,".op.gz") # file name
         file.path0 <- file.path(path,year,file) # complete file path
         
         if (file.exists(file.path0)){
@@ -67,7 +98,9 @@ read_NOAA <- function(station, path, start = 1950, end = 2021, verbose = FALSE){
                                         6, #SNDP
                                         8  #FRSHTT
                              )
-                             , header = FALSE, skip = 1)
+                             , header = FALSE, skip = 1,
+                             colClasses = data.types)
+            
             # renaming columns
             names(data) <- c("STN", "WBAN","YEAR", "MONTH","DAY", 
                              "TEMP", "TEMP.Count", 
@@ -89,7 +122,7 @@ read_NOAA <- function(station, path, start = 1950, end = 2021, verbose = FALSE){
             data <- data[,c("STN","YEAR", "MONTH", "DAY", 
                             "PRCP", "PRCP.Flag",
                             "MIN", "TEMP", "MAX", 
-                            "DEWP", "SLP", "VISIB", "WDSP")]
+                            "DEWP", "SLP", "VISIB", "WDSP", "FRSHTT")]
             
             # creating Date column
             # disabling warning temporarily
@@ -157,6 +190,10 @@ read_NOAA <- function(station, path, start = 1950, end = 2021, verbose = FALSE){
     ## Wind Speed
     data0$WDSP <- replace(data0$WDSP,data0$WDSP==999.9, NA)
     
+    ## FRSHTT
+    data0$FRSHTT <- str_trim(data0$FRSHTT)
+    
+    
     # Filling date columns
     data0$YEAR  <- lubridate::year(data0$DATE)
     data0$MONTH <- as.factor(lubridate::month(data0$DATE))
@@ -178,26 +215,9 @@ read_NOAA <- function(station, path, start = 1950, end = 2021, verbose = FALSE){
         
         # counting missing dates
         missing <- sum(is.na(data0$STN))
-        message("A total of ",missing," days are missing from the data for the years ",start," to ",end,".")
-        
-        # count missing per variable
-        q <- menu(title = "Show number of missing values per year?",
-                  choices = c("Yes", "No"))
-        
-        if (q==1){
-            missing.data <- data0 %>% 
-                group_by(YEAR) %>%
-                summarize(DAYS = sum(is.na(STN)),
-                          PRCP = sum(is.na(PRCP)),
-                          MIN = sum(is.na(MIN)),
-                          TEMP = sum(is.na(TEMP)),
-                          MAX = sum(is.na(MAX)),
-                          DEWP = sum(is.na(DEWP)),
-                          SLP = sum(is.na(SLP)),
-                          VISIB = sum(is.na(VISIB)),
-                          WDSP = sum(is.na(WDSP)))
-            View(missing.data)
-        }
+        missing.prct <- round(missing/nrow(data0)*100,2)
+        message("A total of ",missing," days (",missing.prct,"%) are missing from the data for the years ",start," to ",end,".")
+        message("Use function `missing.data()` to view missing values per variable per year.")
 
     }
     
@@ -206,4 +226,21 @@ read_NOAA <- function(station, path, start = 1950, end = 2021, verbose = FALSE){
     
     # final data
     return(data0)
+}
+
+missing.data <- function(data){
+    require(tidyverse)
+    data$missing <- rowSums(apply(data[,6:14], 2,is.na))==9
+    out <- data %>% 
+        group_by(YEAR) %>%
+        summarize(DAYS = sum(missing),
+                  PRCP = sum(is.na(PRCP)),
+                  MIN = sum(is.na(MIN)),
+                  TEMP = sum(is.na(TEMP)),
+                  MAX = sum(is.na(MAX)),
+                  DEWP = sum(is.na(DEWP)),
+                  SLP = sum(is.na(SLP)),
+                  VISIB = sum(is.na(VISIB)),
+                  WDSP = sum(is.na(WDSP)))
+    View(out)
 }
