@@ -1,7 +1,7 @@
 # Extracting NOAA data using R and Python
 
 
-This repository shows how I extract daily weather data from NOAA using R and Python. Another repository will be made in the future where I will be using Python.
+This repository shows how I extract daily weather data from NOAA using R and Python. Automation codes are mainly written in R, and the Jupyter notebook is more of a tutorial. Will also include Python codes for data downloading and cleaning automation in the future.
 
 Data is extracted from ftp://ftp.ncdc.noaa.gov/pub/data/gsod/. Copy this [link](ftp://ftp.ncdc.noaa.gov/pub/data/gsod/) to your file explorer to access station data from 1950 to present.
 
